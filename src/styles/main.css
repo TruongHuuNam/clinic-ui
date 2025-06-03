@@ -1,0 +1,434 @@
+/* Global Styles */
+:root {
+    --primary-color: #2a9dcc;
+    --secondary-color: #f5f5f5;
+    --accent-color: #ff6b6b;
+    --text-color: #333;
+    --light-text: #777;
+    --border-color: #ddd;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+a {
+    text-decoration: none;
+    color: var(--primary-color);
+}
+
+/* Layout */
+.app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex: 1;
+    padding: 20px;
+}
+
+/* Auth Styles */
+.auth-container {
+    max-width: 500px;
+    margin: 40px auto;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+}
+
+.auth-container h2 {
+    margin-bottom: 20px;
+    text-align: center;
+    color: var(--primary-color);
+}
+
+.phone-login {
+    margin-bottom: 20px;
+}
+
+.phone-login button {
+    margin-top: 10px;
+    width: 100%;
+    padding: 10px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.divider {
+    text-align: center;
+    margin: 20px 0;
+    position: relative;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 45%;
+    height: 1px;
+    background-color: var(--border-color);
+}
+
+.divider::before {
+    left: 0;
+}
+
+.divider::after {
+    right: 0;
+}
+
+.auth-footer {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.auth-footer p {
+    margin-bottom: 10px;
+    color: var(--light-text);
+}
+
+.auth-footer span {
+    color: var(--primary-color);
+    cursor: pointer;
+}
+
+/* Search Bar */
+.search-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.search-tabs {
+    display: flex;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.search-tabs button {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.search-tabs button.active {
+    border-bottom-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.search-input {
+    display: flex;
+}
+
+.search-input input {
+    flex: 1;
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px 0 0 4px;
+    font-size: 16px;
+}
+
+.search-input button {
+    padding: 0 20px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+}
+
+/* Doctor Profile */
+.doctor-page {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.doctor-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    margin: 20px 0;
+}
+
+.doctor-tabs button {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.doctor-tabs button.active {
+    border-bottom-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Time Slot Picker */
+.time-slot-picker {
+    margin: 20px 0;
+}
+
+.slot-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.slot-btn {
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.slot-btn:hover {
+    border-color: var(--primary-color);
+}
+
+.slot-btn.selected {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.slot-btn.locked {
+    background-color: var(--secondary-color);
+    color: var(--light-text);
+    cursor: not-allowed;
+    position: relative;
+}
+
+.lock-icon {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+}
+
+/* Booking Form */
+.booking-form {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.booking-summary {
+    background-color: var(--secondary-color);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.form-group textarea {
+    min-height: 100px;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.radio-group {
+    display: flex;
+    gap: 15px;
+}
+
+.radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.btn-next {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+/* Payment Page */
+.payment-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.payment-summary {
+    background-color: var(--secondary-color);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+
+.payment-methods {
+    margin-bottom: 30px;
+}
+
+.method-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.method-options label {
+    display: block;
+    cursor: pointer;
+}
+
+.method-card {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.method-card:hover {
+    border-color: var(--primary-color);
+}
+
+.method-options input:checked+.method-card {
+    border-color: var(--primary-color);
+    background-color: rgba(42, 157, 204, 0.1);
+}
+
+.method-card img {
+    height: 30px;
+}
+
+.payment-actions {
+    display: flex;
+    justify-content: space-between;
+}
+
+.payment-actions button {
+    padding: 12px 25px;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.payment-actions button:first-child {
+    background: none;
+    border: 1px solid var(--border-color);
+}
+
+.payment-actions button.btn-pay {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+}
+
+/* QR Modal */
+.qr-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.qr-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+}
+
+.qr-content h3 {
+    margin-bottom: 20px;
+}
+
+.qr-content button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .payment-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .payment-actions button {
+        width: 100%;
+    }
+}
