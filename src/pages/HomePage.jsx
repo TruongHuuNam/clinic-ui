@@ -80,7 +80,7 @@ const HomePage = () => {
   };
 
   const renderSearchBox = () => (
-    <Box sx={{ bgcolor: '#fff', p: 3, borderRadius: 2, boxShadow: 2, mb: 3 }}>
+    <Box sx={{ bgcolor: '#fff', p: 4, borderRadius: 4, boxShadow: 2, mb: 3 }}>
       <Tabs value={tab} onChange={(_, v) => { setTab(v); setResults([]); setSearch(''); setSelectedSpecialty(''); setSelectedService(''); }} sx={{ mb: 2 }}>
         <Tab label="Bác sĩ" />
         <Tab label="Chuyên khoa" />
@@ -104,7 +104,7 @@ const HomePage = () => {
           placeholder={tab === 0 ? "Tìm kiếm bác sĩ..." : tab === 1 ? "Tìm kiếm chuyên khoa..." : "Tìm kiếm dịch vụ..."}
           value={search}
           onChange={e => setSearch(e.target.value)}
-          sx={{ bgcolor: '#f5f5f5', minWidth: 260 }}
+          sx={{ bgcolor: '#f5f5f5', minWidth: 600 }}
         />
         <Button variant="contained" size="large" onClick={handleSearch}>Tìm kiếm</Button>
       </Stack>
@@ -181,7 +181,7 @@ const HomePage = () => {
   return (
     <Box>
       {/* Banner quảng cáo */}
-      <Box sx={{ bgcolor: '#fff0f6', py: 0 }}>
+      <Box sx={{ bgcolor: '#fff0f6', py: 2 }}>
         <Container maxWidth="xl" disableGutters>
           <Card sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: 3, m: 0 }}>
             <CardMedia component="img" height="320" image="https://cdn-healthcare.hellohealthgroup.com/2025/03/1742887848_67e25ba8b0b2d6.65467120.jpg?w=1920&q=75" alt="banner" sx={{ width: '100%', objectFit: 'cover' }} />
@@ -225,9 +225,10 @@ const HomePage = () => {
                 </CardContent>
               </Card>
             ))}
-          </Carousel>
+          </Carousel> 
         </Box>
         {/* Section dịch vụ toàn diện */}
+        <Container maxWidth="xl" disableGutters sx={{px:0}}>
         <Box sx={{ mb: 6 }}>
           <Typography variant="h5" fontWeight={700} gutterBottom>Dịch vụ toàn diện</Typography>
           <Grid container spacing={3}>
@@ -244,6 +245,7 @@ const HomePage = () => {
             ))}
           </Grid>
         </Box>
+        </Container>
         {/* Section chuyên khoa nổi bật */}
         <Box sx={{ mb: 6 }}>
           <Typography variant="h5" fontWeight={700} gutterBottom>Chuyên khoa nổi bật</Typography>
