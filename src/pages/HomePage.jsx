@@ -1,285 +1,178 @@
-import React, { useState } from 'react';
-import { Box, Typography, Container, Grid, TextField, Button, Card, CardContent, CardMedia, Chip, Stack, Tabs, Tab, MenuItem, Avatar } from '@mui/material';
-import { useRef } from 'react';
+// src/pages/HomePage.jsx
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Box, Typography, Container, Grid, TextField, Button, Card, CardContent,
+  CardMedia, Paper, Avatar, CircularProgress, Alert, Tabs, Tab, Stack
+} from '@mui/material';
+import { Search, EventAvailable, VerifiedUser, SupportAgent, Star, ArrowForwardIos, FormatQuote } from '@mui/icons-material';
+import doctorService from '../services/doctorService';
+import specialtyService from '../services/specialtyService';
 
-const specialties = [
-  { id: 1, name: 'Nội tổng quát', image: 'https://hellodoctor.com.vn/wp-content/uploads/2022/05/bac-si-8054-1451295555.jpg' },
-  { id: 2, name: 'Nhi khoa', image: 'https://hellodoctor.com.vn/wp-content/uploads/2022/05/PZ1yzoq.jpg' },
-  { id: 3, name: 'Tai mũi họng', image: 'https://hellodoctor.com.vn/wp-content/uploads/2022/05/kham-tai-mui-hong-isofhcare-jpg_4c51dcc4_7d0e_40e7_9e47_4807185a27ab.jpg' },
-];
-const doctors = [
-  { id: 1, name: 'GS.TS.BS Lê Văn Cường', specialtyId: 1, specialty: 'Nội tổng quát', image: 'https://cdn-healthcare.hellohealthgroup.com/2023/09/1695530410_650fbdaa21ee74.98331766.jpg', clinic: 'HelloClinic', address: '180 Cao Lỗ, Phường 4, Quận 8, Hồ Chí Minh', rating: 4.9, bookingCount: 120 },
-  { id: 2, name: 'BS. Nguyễn Thị Hoa', specialtyId: 2, specialty: 'Nhi khoa', image: '	https://cdn-healthcare.hellohealthgroup.com/2023/05/1684813989_646c38a5e3f153.23896815.jpg', clinic: 'HelloClinic', address: '180 Cao Lỗ, Phường 4, Quận 8, Hồ Chí Minh', rating: 4.8, bookingCount: 80 },
-  { id: 3, name: 'BS. Trần Văn B', specialtyId: 1, specialty: 'Nội tổng quát', image: '	https://cdn-healthcare.hellohealthgroup.com/2024/04/1711958773_660a6af50bb348.72770895.jpg', clinic: 'HelloClinic', address: '180 Cao Lỗ, Phường 4, Quận 8, Hồ Chí Minh', rating: 4.7, bookingCount: 60 },
-  { id: 4, name: 'BS. Lê Thị C', specialtyId: 3, specialty: 'Tai mũi họng', image: 'https://cdn-healthcare.hellohealthgroup.com/2023/05/1684834044_646c86fc1199c3.48848023.jpg', clinic: 'HelloClinic', address: '180 Cao Lỗ, Phường 4, Quận 8, Hồ Chí Minh', rating: 4.6, bookingCount: 40 },
-];
-const services = [
-  { id: 1, name: 'Khám tổng quát', price: 350000, image: 'https://careplusvn.com/Uploads/t/kh/kham-tong-quat-1_0003219_710.jpeg', doctorIds: [1, 3] },
-  { id: 2, name: 'Khám nhi', price: 300000, image: 'https://taimuihongtphcm.vn/wp-content/uploads/2024/08/cceea81a369393cdca82.jpg', doctorIds: [2] },
-  { id: 3, name: 'Khám tai mũi họng', price: 320000, image: 'https://taimuihongtphcm.vn/wp-content/uploads/2024/08/cceea81a369393cdca82.jpg', doctorIds: [4] },
-];
-const articles = [
-  { id: 1, title: '5 dấu hiệu bạn nên đi khám tổng quát ngay', image: 'https://careplusvn.com/Uploads/t/kh/kham-tong-quat-1_0003219_710.jpeg', excerpt: 'Khám tổng quát giúp phát hiện sớm các bệnh lý nguy hiểm và bảo vệ sức khỏe toàn diện.' },
-  { id: 2, title: 'Lợi ích của việc khám nhi định kỳ cho trẻ', image: 'https://taimuihongtphcm.vn/wp-content/uploads/2024/08/cceea81a369393cdca82.jpg', excerpt: 'Khám nhi định kỳ giúp phát hiện sớm các vấn đề sức khỏe ở trẻ nhỏ.' },
-  { id: 3, title: 'Chăm sóc sức khỏe tai mũi họng đúng cách', image: 'https://taimuihongtphcm.vn/wp-content/uploads/2024/08/cceea81a369393cdca82.jpg', excerpt: 'Bảo vệ hệ hô hấp và phòng tránh các bệnh lý tai mũi họng.' },
-];
+// Component con cho các thẻ "Tại sao chọn chúng tôi?"
+const FeatureCard = ({ icon, title, description }) => (
+  <Box sx={{ p: 3, textAlign: 'center', height: '100%' }}>
+    <Avatar sx={{ bgcolor: 'primary.light', width: 64, height: 64, margin: '0 auto 16px' }}>{icon}</Avatar>
+    <Typography variant="h6" fontWeight={600} gutterBottom>{title}</Typography>
+    <Typography variant="body2" color="text.secondary">{description}</Typography>
+  </Box>
+);
 
-const Carousel = ({ children }) => {
-  const ref = useRef();
-  return (
-    <Box sx={{ position: 'relative', width: '100%', overflow: 'hidden', mb: 2 }}>
-      <Box ref={ref} sx={{ display: 'flex', gap: 2, overflowX: 'auto', scrollSnapType: 'x mandatory', pb: 1 }}>
-        {children}
-      </Box>
+// Component con cho thẻ đánh giá
+const TestimonialCard = ({ text, author, title }) => (
+  <Paper variant="outlined" sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <FormatQuote sx={{ fontSize: 40, color: 'primary.main', transform: 'rotate(180deg)' }} />
+    <Typography variant="body1" sx={{ my: 2, fontStyle: 'italic', flexGrow: 1 }}>{text}</Typography>
+    <Box>
+      <Typography fontWeight="bold">{author}</Typography>
+      <Typography variant="caption" color="text.secondary">{title}</Typography>
     </Box>
-  );
-};
+  </Paper>
+);
 
 const HomePage = () => {
-  const [tab, setTab] = useState(0); // 0: Bác sĩ, 1: Chuyên khoa, 2: Dịch vụ
-  const [search, setSearch] = useState('');
-  const [selectedSpecialty, setSelectedSpecialty] = useState('');
-  const [selectedService, setSelectedService] = useState('');
-  const [results, setResults] = useState([]);
   const navigate = useNavigate();
+  const [allDoctors, setAllDoctors] = useState([]);
+  const [allSpecialties, setAllSpecialties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTab, setSearchTab] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Xử lý tìm kiếm
+  const testimonials = [
+    { text: "Dịch vụ tuyệt vời! Tôi đã đặt lịch rất dễ dàng và bác sĩ rất tận tình.", author: "Nguyễn Thu Trang", title: "Bệnh nhân" },
+    { text: "Ứng dụng chuyên nghiệp, tiết kiệm rất nhiều thời gian so với việc đến bệnh viện chờ đợi.", author: "Trần Minh Hoàng", title: "Giám đốc Marketing" },
+    { text: "Tôi rất ấn tượng với đội ngũ bác sĩ, không chỉ giỏi chuyên môn mà còn rất chu đáo.", author: "Lê Thị Bích Phượng", title: "Giáo viên" },
+  ];
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        setLoading(true);
+        const [doctorsRes, specialtiesRes] = await Promise.all([
+          doctorService.getAllDoctors(),
+          specialtyService.getAllSpecialties()
+        ]);
+        setAllDoctors(doctorsRes.data || []);
+        setAllSpecialties(specialtiesRes.data || []);
+      } catch (err) {
+        setError('Không thể tải dữ liệu trang chủ.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInitialData();
+  }, []);
+
   const handleSearch = () => {
-    if (tab === 0) {
-      let filtered = doctors.filter(d =>
-        (!selectedSpecialty || d.specialtyId === Number(selectedSpecialty)) &&
-        (!search || d.name.toLowerCase().includes(search.toLowerCase()))
-      );
-      filtered = filtered.sort((a, b) => b.bookingCount - a.bookingCount);
-      setResults(filtered);
-    } else if (tab === 1) {
-      let filtered = specialties.filter(s =>
-        !search || s.name.toLowerCase().includes(search.toLowerCase())
-      );
-      setResults(filtered);
-    } else if (tab === 2) {
-      let filtered = services.filter(s =>
-        !search || s.name.toLowerCase().includes(search.toLowerCase())
-      );
-      setResults(filtered);
+    const searchType = searchTab === 0 ? 'doctor' : 'specialty';
+    const params = new URLSearchParams();
+    if (searchTerm) {
+      params.append('q', searchTerm);
     }
+    params.append('type', searchType);
+    navigate(`/search?${params.toString()}`);
   };
 
-  const handleSpecialtyClick = (id) => {
-    setTab(0);
-    setSelectedSpecialty(id);
-    setResults(doctors.filter(d => d.specialtyId === id));
+  const handleSpecialtyClick = (specialty) => {
+    const params = new URLSearchParams();
+    params.append('type', 'specialty');
+    params.append('specialtyId', specialty.id);
+    params.append('specialtyName', specialty.tenChuyenKhoa);
+    navigate(`/search?${params.toString()}`);
   };
 
-  const handleServiceClick = (id) => {
-    setTab(0);
-    setSelectedSpecialty('');
-    const doctorIds = services.find(s => s.id === id)?.doctorIds || [];
-    setResults(doctors.filter(d => doctorIds.includes(d.id)));
-  };
+  const featuredDoctors = useMemo(() => {
+    return [...allDoctors]
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      .slice(0, 4);
+  }, [allDoctors]);
 
-  const renderSearchBox = () => (
-    <Box sx={{ bgcolor: '#fff', p: 4, borderRadius: 4, boxShadow: 2, mb: 3 }}>
-      <Tabs value={tab} onChange={(_, v) => { setTab(v); setResults([]); setSearch(''); setSelectedSpecialty(''); setSelectedService(''); }} sx={{ mb: 2 }}>
-        <Tab label="Bác sĩ" />
-        <Tab label="Chuyên khoa" />
-        <Tab label="Dịch vụ" />
-      </Tabs>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-        {tab === 0 && (
-          <TextField
-            select
-            label="Chuyên khoa"
-            value={selectedSpecialty}
-            onChange={e => setSelectedSpecialty(e.target.value)}
-            sx={{ minWidth: 180 }}
-          >
-            <MenuItem value="">Tất cả chuyên khoa</MenuItem>
-            {specialties.map(s => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
-          </TextField>
-        )}
-        <TextField
-          variant="outlined"
-          placeholder={tab === 0 ? "Tìm kiếm bác sĩ..." : tab === 1 ? "Tìm kiếm chuyên khoa..." : "Tìm kiếm dịch vụ..."}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          sx={{ bgcolor: '#f5f5f5', minWidth: 600 }}
-        />
-        <Button variant="contained" size="large" onClick={handleSearch}>Tìm kiếm</Button>
-      </Stack>
-      <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-        {tab === 1 && specialties.map(s => (
-          <Chip key={s.id} label={s.name} onClick={() => handleSpecialtyClick(s.id)} clickable sx={{ fontWeight: 600 }} />
-        ))}
-        {tab === 2 && services.map(s => (
-          <Chip key={s.id} label={s.name} onClick={() => handleServiceClick(s.id)} clickable sx={{ fontWeight: 600 }} />
-        ))}
-      </Stack>
-    </Box>
-  );
-
-  const renderResults = () => {
-    if (tab === 0) {
-      return (
-        <Grid container spacing={3}>
-          {results.map(d => (
-            <Grid item xs={12} sm={6} md={4} key={d.id}>
-              <Card sx={{ cursor: 'pointer', transition: '0.2s', '&:hover': { boxShadow: 6 } }} onClick={() => navigate(`/doctor/${d.id}`)}>
-                <CardContent sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar src={d.image} sx={{ width: 56, height: 56, mr: 2 }} />
-                  <Box>
-                    <Typography fontWeight={600}>{d.name}</Typography>
-                    <Typography variant="body2" color="text.secondary">{d.specialty}</Typography>
-                    <Typography variant="body2" color="primary.main">★ {d.rating} | {d.bookingCount} lượt đặt</Typography>
-                    <Typography variant="body2" color="text.secondary">{d.clinic} - {d.address}</Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-          {results.length === 0 && <Grid item xs={12}><Typography textAlign="center">Không có kết quả phù hợp.</Typography></Grid>}
-        </Grid>
-      );
-    } else if (tab === 1) {
-      return (
-        <Grid container spacing={3}>
-          {results.map(s => (
-            <Grid item xs={12} sm={4} key={s.id}>
-              <Card sx={{ cursor: 'pointer', transition: '0.2s', '&:hover': { boxShadow: 6 } }} onClick={() => handleSpecialtyClick(s.id)}>
-                <CardMedia component="img" height="120" image={s.image} alt={s.name} />
-                <CardContent>
-                  <Typography variant="subtitle1" fontWeight={600}>{s.name}</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-          {results.length === 0 && <Grid item xs={12}><Typography textAlign="center">Không có kết quả phù hợp.</Typography></Grid>}
-        </Grid>
-      );
-    } else if (tab === 2) {
-      return (
-        <Grid container spacing={3}>
-          {results.map(s => (
-            <Grid item xs={12} sm={6} md={4} key={s.id}>
-              <Card sx={{ cursor: 'pointer', transition: '0.2s', '&:hover': { boxShadow: 6 } }} onClick={() => handleServiceClick(s.id)}>
-                <CardMedia component="img" height="120" image={s.image} alt={s.name} />
-                <CardContent>
-                  <Typography variant="subtitle1" fontWeight={600}>{s.name}</Typography>
-                  <Typography variant="body2" color="primary.main" fontWeight={700}>{s.price.toLocaleString()} đ</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-          {results.length === 0 && <Grid item xs={12}><Typography textAlign="center">Không có kết quả phù hợp.</Typography></Grid>}
-        </Grid>
-      );
-    }
-    return null;
-  };
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
+  if (error) return <Container sx={{ py: 4 }}><Alert severity="error">{error}</Alert></Container>;
 
   return (
-    <Box>
-      {/* Banner quảng cáo */}
-      <Box sx={{ bgcolor: '#fff0f6', py: 2 }}>
-        <Container maxWidth="xl" disableGutters>
-          <Card sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: 3, m: 0 }}>
-            <CardMedia component="img" height="320" image="https://cdn-healthcare.hellohealthgroup.com/2025/03/1742887848_67e25ba8b0b2d6.65467120.jpg?w=1920&q=75" alt="banner" sx={{ width: '100%', objectFit: 'cover' }} />
-          </Card>
+    <Box sx={{ bgcolor: 'background.default' }}>
+      {/* HERO SECTION */}
+      <Box sx={{ position: 'relative', py: 10, display: 'flex', alignItems: 'center', background: `linear-gradient(rgba(0, 77, 153, 0.6), rgba(0, 44, 88, 0.8)), url('https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=2070&q=80')`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <Container maxWidth="md" sx={{ color: 'white', textAlign: 'center', position: 'relative', zIndex: 2 }}>
+          <Typography variant="h2" component="h1" fontWeight={800} sx={{ mb: 2 }}>Chăm sóc sức khỏe trong tầm tay</Typography>
+          <Typography variant="h6" color="grey.300" sx={{ mb: 4 }}>Tìm kiếm bác sĩ uy tín, đặt lịch khám nhanh chóng.</Typography>
+          <Paper sx={{ p: 2, borderRadius: 3, maxWidth: '700px', mx: 'auto' }}>
+            <Tabs value={searchTab} onChange={(e, newValue) => setSearchTab(newValue)} centered>
+              <Tab label="Tìm Bác sĩ" />
+              <Tab label="Tìm Chuyên khoa" />
+            </Tabs>
+            <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+              <TextField fullWidth variant="outlined" placeholder={searchTab === 0 ? "Nhập tên bác sĩ..." : "Nhập tên chuyên khoa..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSearch()} />
+              <Button variant="contained" size="large" startIcon={<Search />} onClick={handleSearch}>Tìm kiếm</Button>
+            </Stack>
+          </Paper>
         </Container>
       </Box>
-      {/* Box search */}
-      <Box sx={{ bgcolor: '#e3f2fd', py: 6, textAlign: 'center' }}>
-        <Container>
-          <Typography variant="h3" fontWeight={700} gutterBottom>
-            Đặt lịch khám bệnh phòng khám tư nhân
-          </Typography>
-          <Typography variant="h6" sx={{ mb: 3 }}>
-            Tìm kiếm bác sĩ, chuyên khoa, dịch vụ phù hợp và đặt lịch nhanh chóng, tiện lợi.
-          </Typography>
-          {renderSearchBox()}
+
+      {/* WHY CHOOSE US */}
+      <Box sx={{ py: 8, bgcolor: 'background.paper' }}>
+        <Container maxWidth="lg">
+          <Grid container spacing={4}>
+            <Grid item xs={12} md={4}><FeatureCard icon={<EventAvailable sx={{ fontSize: 40 }} />} title="Đặt lịch 24/7" description="Dễ dàng đặt hẹn mọi lúc, mọi nơi chỉ với vài cú nhấp chuột." /></Grid>
+            <Grid item xs={12} md={4}><FeatureCard icon={<VerifiedUser sx={{ fontSize: 40 }} />} title="Bác sĩ uy tín" description="Đội ngũ bác sĩ chuyên khoa giàu kinh nghiệm, thông tin minh bạch." /></Grid>
+            <Grid item xs={12} md={4}><FeatureCard icon={<SupportAgent sx={{ fontSize: 40 }} />} title="Hỗ trợ tận tình" description="Luôn sẵn sàng hỗ trợ bạn trong suốt quá trình khám chữa bệnh." /></Grid>
+          </Grid>
         </Container>
       </Box>
-      {/* Kết quả tìm kiếm */}
-      <Container sx={{ py: 6 }}>
-        {results.length > 0 && (
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h5" fontWeight={700} gutterBottom>Kết quả tìm kiếm</Typography>
-            {renderResults()}
-          </Box>
-        )}
-        {/* Section bác sĩ nổi bật */}
-        <Box sx={{ mb: 6 }}>
-          <Typography variant="h5" fontWeight={700} gutterBottom>Bác sĩ nổi bật</Typography>
-          <Carousel>
-            {doctors.map(d => (
-              <Card key={d.id} sx={{ minWidth: 260, maxWidth: 280, mx: 1, cursor: 'pointer', transition: '0.2s', '&:hover': { boxShadow: 6 }, flex: '0 0 auto' }} onClick={() => navigate(`/doctor/${d.id}`)}>
-                <CardContent sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar src={d.image} sx={{ width: 56, height: 56, mr: 2 }} />
-                  <Box>
-                    <Typography fontWeight={600}>{d.name}</Typography>
-                    <Typography variant="body2" color="text.secondary">{d.specialty}</Typography>
-                    <Typography variant="body2" color="primary.main">★ {d.rating} | {d.bookingCount} lượt đặt</Typography>
-                    <Typography variant="body2" color="text.secondary">{d.clinic} - {d.address}</Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            ))}
-          </Carousel> 
-        </Box>
-        {/* Section dịch vụ toàn diện */}
-        <Container maxWidth="xl" disableGutters sx={{px:0}}>
-        <Box sx={{ mb: 6 }}>
-          <Typography variant="h5" fontWeight={700} gutterBottom>Dịch vụ toàn diện</Typography>
-          <Grid container spacing={3}>
-            {services.map(s => (
-              <Grid item xs={12} sm={6} md={4} key={s.id}>
-                <Card sx={{ cursor: 'pointer', transition: '0.2s', '&:hover': { boxShadow: 6 } }}>
-                  <CardMedia component="img" height="120" image={s.image} alt={s.name} />
-                  <CardContent>
-                    <Typography variant="subtitle1" fontWeight={600}>{s.name}</Typography>
-                    <Typography variant="body2" color="primary.main" fontWeight={700}>{s.price.toLocaleString()} đ</Typography>
-                  </CardContent>
-                </Card>
+
+      {/* FEATURED SPECIALTIES */}
+      <Box sx={{ py: 8 }}>
+        <Container maxWidth="lg">
+          <Typography variant="h3" fontWeight={700} gutterBottom textAlign="center">Khám phá các chuyên khoa</Typography>
+          <Grid container spacing={3} sx={{ mt: 4 }}>
+            {(allSpecialties || []).slice(0, 6).map(specialty => (
+              <Grid item xs={12} sm={6} md={4} key={specialty.id}>
+                <Paper elevation={0} variant='outlined' sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', '&:hover': { bgcolor: 'primary.light', color: 'primary.contrastText' } }} onClick={() => handleSpecialtyClick(specialty)}>
+                  <Avatar src={specialty.hinhAnhUrl} sx={{ width: 56, height: 56, bgcolor: 'primary.main', color: 'white' }}><EventAvailable /></Avatar>
+                  <Box><Typography variant="h6" fontWeight={600}>{specialty.tenChuyenKhoa}</Typography></Box>
+                </Paper>
               </Grid>
             ))}
           </Grid>
-        </Box>
         </Container>
-        {/* Section chuyên khoa nổi bật */}
-        <Box sx={{ mb: 6 }}>
-          <Typography variant="h5" fontWeight={700} gutterBottom>Chuyên khoa nổi bật</Typography>
-          <Grid container spacing={3}>
-            {specialties.map(s => (
-              <Grid item xs={12} sm={4} key={s.id}>
-                <Card sx={{ cursor: 'pointer', transition: '0.2s', '&:hover': { boxShadow: 6 } }}>
-                  <CardMedia component="img" height="120" image={s.image} alt={s.name} />
-                  <CardContent>
-                    <Typography variant="subtitle1" fontWeight={600}>{s.name}</Typography>
+      </Box>
+
+      {/* TOP DOCTORS */}
+      <Box sx={{ py: 8, bgcolor: 'background.paper' }}>
+        <Container maxWidth="lg">
+          <Typography variant="h3" fontWeight={700} gutterBottom textAlign="center">Gặp gỡ các bác sĩ hàng đầu</Typography>
+          <Grid container spacing={3} sx={{ mt: 4 }}>
+            {featuredDoctors.map((doctor) => (
+              <Grid item xs={12} sm={6} md={3} key={doctor.maBacSi}>
+                {/* Render Doctor Card Logic */}
+                <Card sx={{ height: '100%', cursor: 'pointer', '&:hover': { boxShadow: 6, transform: 'translateY(-4px)' } }} onClick={() => navigate(`/doctor/${doctor.maBacSi}`)}>
+                  <CardMedia component="img" height="240" image={doctor.hinhAnhUrl || 'https://via.placeholder.com/300x240.png?text=No+Image'} alt={doctor.hoTen} />
+                  <CardContent sx={{ textAlign: 'center' }}>
+                    <Typography gutterBottom variant="h6" component="div" fontWeight={600}>{doctor.hoTen}</Typography>
+                    <Typography variant="body2" color="primary.main">{doctor.chuyenKhoa || "Chuyên khoa"}</Typography>
                   </CardContent>
                 </Card>
               </Grid>
             ))}
           </Grid>
-        </Box>
-        {/* Section bài viết nổi bật */}
-        <Box sx={{ mb: 6 }}>
-          <Typography variant="h5" fontWeight={700} gutterBottom>Bài viết nổi bật</Typography>
-          <Grid container spacing={3}>
-            {articles.map(a => (
-              <Grid item xs={12} sm={6} md={4} key={a.id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', cursor: 'pointer', transition: '0.2s', '&:hover': { boxShadow: 6 } }}>
-                  <CardMedia component="img" height="140" image={a.image} alt={a.title} />
-                  <CardContent>
-                    <Typography fontWeight={600}>{a.title}</Typography>
-                    <Typography variant="body2" color="text.secondary">{a.excerpt}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
+        </Container>
+      </Box>
+
+      {/* TESTIMONIALS */}
+      <Box sx={{ py: 8 }}>
+        <Container maxWidth="lg">
+          <Typography variant="h3" fontWeight={700} gutterBottom textAlign="center">Bệnh nhân nói về chúng tôi</Typography>
+          <Grid container spacing={4} sx={{ mt: 3 }}>
+            {testimonials.map((item, index) => (
+              <Grid item xs={12} md={4} key={index}><TestimonialCard text={item.text} author={item.author} title={item.title} /></Grid>
             ))}
           </Grid>
-        </Box>
-      </Container>
+        </Container>
+      </Box>
     </Box>
   );
 };

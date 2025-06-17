@@ -1,189 +1,288 @@
-import React, { useState } from 'react';
-import { Box, Container, Typography, Grid, Button, TextField, MenuItem, Stack, Alert, Avatar, Paper, Chip } from '@mui/material';
-import dayjs from 'dayjs';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import profileService from '../services/profileService';
+import bookingService from '../services/bookingService';
+import {
+  Container, Paper, Typography, Box, Grid, TextField, Button, CircularProgress,
+  Select, MenuItem, FormControl, InputLabel, Alert, Stepper, Step, StepLabel, StepContent
+} from '@mui/material';
+import { format, isValid } from 'date-fns';
+import { Person, EventAvailable, EditNote, Payments } from '@mui/icons-material';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { vi } from 'date-fns/locale';
 
-const specialties = [
-  { id: 1, name: 'Nội tổng quát' },
-  { id: 2, name: 'Nhi khoa' },
-  { id: 3, name: 'Tai mũi họng' },
-];
-const doctors = [
-  { id: 1, name: 'GS.TS.BS Lê Văn Cường', specialtyId: 1 },
-  { id: 2, name: 'BS. Nguyễn Thị Hoa', specialtyId: 2 },
-];
-const slots = [
-  '09:00', '09:15', '09:30', '09:45', '10:00', '10:15', '10:30', '10:45',
-];
-const clinicInfo = {
-  name: 'HelloClinic',
-  address: '180 Cao Lỗ, Phường 4, Quận 8, Hồ Chí Minh',
+const getInitialBookingIntent = (location) => {
+  try {
+    if (location.state?.bookingIntent) return location.state.bookingIntent;
+    const storedIntent = sessionStorage.getItem('bookingIntent');
+    return storedIntent ? JSON.parse(storedIntent) : null;
+  } catch (error) {
+    console.error("Lỗi khi đọc thông tin đặt lịch:", error);
+    return null;
+  }
 };
 
 const BookingPage = () => {
+  const { user } = useAuth();
   const location = useLocation();
-  const doctorState = location.state?.doctor;
-  const [step, setStep] = useState(1);
-  const [specialty, setSpecialty] = useState(doctorState ? doctorState.specialty : '');
-  const [doctor, setDoctor] = useState(doctorState ? doctorState.id : '');
-  const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'));
-  const [slot, setSlot] = useState('');
-  const [softLockedSlot, setSoftLockedSlot] = useState(null);
-  const [info, setInfo] = useState({ name: '', phone: '', email: '', dob: '', gender: '', reason: '' });
+  const navigate = useNavigate();
+
+  const [bookingIntent] = useState(() => getInitialBookingIntent(location));
+
+  const [profiles, setProfiles] = useState([]);
+  const [selectedProfileId, setSelectedProfileId] = useState('');
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newProfileData, setNewProfileData] = useState({
+    hoTenBenhNhan: '', ngaySinh: null, gioiTinh: 'Nam', soDienThoai: '',
+    quanHeVoiNguoiDat: 'Bản thân', diaChi: ''
+  });
+  const [lyDoKham, setLyDoKham] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Lọc bác sĩ theo chuyên khoa
-  const filteredDoctors = specialty ? doctors.filter(d => d.specialtyId === Number(specialty)) : doctors;
+  // MỚI: State riêng cho việc kiểm tra lỗi của form
+  const [validationErrors, setValidationErrors] = useState({});
 
-  // Nếu có doctorState thì lấy schedule từ đó, ngược lại dùng slots mẫu
-  const availableSchedule = doctorState?.schedule || [];
-  const availableDates = availableSchedule.map(s => s.date);
-  const slotsForDate = availableSchedule.find(s => s.date === date)?.slots || slots;
-
-  // Disable ngày trước ngày hiện tại
-  const today = dayjs().format('YYYY-MM-DD');
-  const isPastDate = (d) => dayjs(d).isBefore(today, 'day');
-  // Disable slot đã qua nếu là ngày hôm nay
-  const isPastSlot = (slotTime) => {
-    if (date !== today) return false;
-    const now = dayjs();
-    const [h, m] = slotTime.split(':');
-    const slotDate = dayjs().hour(Number(h)).minute(Number(m));
-    return now.isAfter(slotDate);
-  };
-
-  const handleSlotChange = (s) => {
-    setSlot(s);
-    setSoftLockedSlot(s);
-    setError('');
-  };
-
-  const handleNext = () => {
-    if (step === 1 && (!date || !slot)) {
-      setError('Vui lòng chọn đầy đủ thông tin.');
+  useEffect(() => {
+    if (!bookingIntent) {
+      alert("Không tìm thấy thông tin đặt lịch hợp lệ. Vui lòng thử lại từ trang chi tiết bác sĩ.");
+      navigate('/');
       return;
     }
-    if (step === 2 && (!info.name || !info.phone || !info.email || !info.dob || !info.gender)) {
-      setError('Vui lòng nhập đầy đủ thông tin cá nhân.');
-      return;
+    setLoading(true);
+    profileService.getMyProfiles()
+      .then(response => {
+        const fetchedProfiles = response.data || [];
+        setProfiles(fetchedProfiles);
+        if (fetchedProfiles.length > 0) {
+          const selfProfile = fetchedProfiles.find(p => p.quanHeVoiNguoiDat === 'Bản thân');
+          setSelectedProfileId(selfProfile ? selfProfile.maHoSo : fetchedProfiles[0].maHoSo);
+        } else {
+          setIsCreatingNew(true);
+          setSelectedProfileId('new');
+          setNewProfileData(prev => ({
+            ...prev,
+            hoTenBenhNhan: user?.hoTen || '',
+            soDienThoai: user?.soDienThoai || '',
+            diaChi: user?.diaChi || '',
+            quanHeVoiNguoiDat: 'Bản thân',
+          }));
+        }
+      })
+      .catch(err => {
+        console.error("Lỗi khi tải hồ sơ:", err);
+        setError("Không thể tải hồ sơ bệnh nhân. Vui lòng F5 lại trang.");
+      })
+      .finally(() => setLoading(false));
+  }, [bookingIntent, navigate, user]);
+
+  const handleProfileSelectionChange = (event) => {
+    const value = event.target.value;
+    setSelectedProfileId(value);
+    setIsCreatingNew(value === 'new');
+    setValidationErrors({}); // Xóa lỗi cũ khi chuyển đổi lựa chọn
+    if (value === 'new') {
+      setNewProfileData({
+        hoTenBenhNhan: '', ngaySinh: null, gioiTinh: 'Nam',
+        soDienThoai: '', quanHeVoiNguoiDat: 'Người thân', diaChi: ''
+      });
     }
-    setError('');
-    setStep(step + 1);
   };
+
+  // SỬA: Khi người dùng nhập, xóa lỗi của trường đó đi
+  const handleNewProfileInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewProfileData({ ...newProfileData, [name]: value });
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  // SỬA: Khi người dùng chọn ngày, xóa lỗi của trường ngày sinh
+  const handleDateChange = (newDate) => {
+    setNewProfileData({ ...newProfileData, ngaySinh: newDate });
+    if (validationErrors.ngaySinh) {
+      setValidationErrors(prev => ({ ...prev, ngaySinh: undefined }));
+    }
+  };
+
+  // MỚI: Hàm kiểm tra lỗi riêng biệt
+  const validateNewProfile = () => {
+    const errors = {};
+    if (!newProfileData.hoTenBenhNhan.trim()) errors.hoTenBenhNhan = "Họ tên không được để trống";
+    if (!newProfileData.ngaySinh || !isValid(newProfileData.ngaySinh)) errors.ngaySinh = "Ngày sinh không hợp lệ";
+    if (!newProfileData.gioiTinh) errors.gioiTinh = "Vui lòng chọn giới tính";
+    if (!newProfileData.soDienThoai.trim()) errors.soDienThoai = "Số điện thoại không được để trống";
+    if (!newProfileData.diaChi.trim()) errors.diaChi = "Địa chỉ không được để trống";
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0; // Trả về true nếu không có lỗi
+  };
+
+  const handleProceedToConfirmation = async () => {
+    setError(''); // Xóa lỗi chung cũ
+    // SỬA: Chỉ kiểm tra lỗi khi tạo hồ sơ mới
+    if (isCreatingNew) {
+      const isFormValid = validateNewProfile();
+      if (!isFormValid) {
+        return; // Dừng lại nếu form không hợp lệ
+      }
+    }
+
+    setSubmitting(true);
+    try {
+      let finalProfileId = selectedProfileId;
+
+      if (isCreatingNew) {
+        const profilePayload = {
+          ...newProfileData,
+          ngaySinh: format(newProfileData.ngaySinh, 'yyyy-MM-dd')
+        };
+        const newProfileResponse = await profileService.createProfile(profilePayload);
+        finalProfileId = newProfileResponse.data.maHoSo;
+      }
+
+      if (!finalProfileId || finalProfileId === 'new') {
+        throw new Error("Vui lòng chọn hoặc tạo một hồ sơ bệnh nhân.");
+      }
+
+      const bookingData = {
+        maSlot: bookingIntent.slotInfo.maSlot,
+        maHoSoBenhNhan: finalProfileId,
+        lyDoKham: lyDoKham,
+      };
+
+      const response = await bookingService.createProvisionalBooking(bookingData);
+      sessionStorage.removeItem('bookingIntent');
+      navigate('/confirmation', { state: { summary: response.data } });
+
+    } catch (err) {
+      console.error("Lỗi khi xác nhận đặt lịch:", err);
+      setError(err.response?.data?.message || err.message || "Đặt lịch thất bại, vui lòng thử lại.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}><CircularProgress /></Box>;
+  if (!bookingIntent) return null;
 
   return (
-    <Container sx={{ py: 6 }}>
-      <Typography variant="h4" fontWeight={700} gutterBottom>Đặt lịch khám</Typography>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {step === 1 && (
-        <Box>
-          {doctorState && (
-            <Paper sx={{ p: 3, mb: 3, display: 'flex', alignItems: 'center', gap: 3, bgcolor: '#f5faff', border: '1px solid #e3eafc', borderRadius: 3 }}>
-              <Avatar src={doctorState.avatar} sx={{ width: 80, height: 80, mr: 3 }} />
-              <Box>
-                <Typography variant="h5" fontWeight={700}>{doctorState.name}</Typography>
-                <Typography variant="body1" color="primary.main" fontWeight={600}>{doctorState.specialty}</Typography>
-                <Typography variant="body2" color="text.secondary">{clinicInfo.name} - {clinicInfo.address}</Typography>
-                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                  <Chip label="★ 4.9" color="warning" size="small" />
-                  <Chip label="120 lượt đặt" color="info" size="small" />
-                  <Chip label="Giá 400.000 đ" color="success" size="small" />
-                </Stack>
-              </Box>
-            </Paper>
-          )}
-          <Grid container spacing={2}>
-            {!doctorState && (
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  select
-                  label="Chuyên khoa"
-                  value={specialty}
-                  onChange={e => { setSpecialty(e.target.value); setDoctor(''); }}
-                  fullWidth
-                  sx={{ mb: 2 }}
-                >
-                  {specialties.map(s => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
-                </TextField>
-                <TextField
-                  select
-                  label="Bác sĩ"
-                  value={doctor}
-                  onChange={e => setDoctor(e.target.value)}
-                  fullWidth
-                  sx={{ mb: 2 }}
-                  disabled={!specialty}
-                >
-                  {filteredDoctors.map(d => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
-                </TextField>
-              </Grid>
-            )}
-            <Grid item xs={12} sm={doctorState ? 12 : 8}>
-              <TextField
-                type="date"
-                label="Ngày khám"
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                sx={{ mb: 2 }}
-                inputProps={{ min: today, ...(doctorState && { max: availableDates[availableDates.length - 1] }) }}
-                select={!!doctorState}
-              >
-                {doctorState && availableDates.map(d => (
-                  <MenuItem key={d} value={d} disabled={isPastDate(d)}>{d}</MenuItem>
-                ))}
-              </TextField>
-              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>Chọn khung giờ khám:</Typography>
-              <Stack direction="row" spacing={2} flexWrap="wrap">
-                {slotsForDate.map(s => (
-                  <Button
-                    key={s}
-                    variant={slot === s ? 'contained' : 'outlined'}
-                    color={softLockedSlot === s ? 'primary' : 'inherit'}
-                    onClick={() => handleSlotChange(s)}
-                    disabled={isPastSlot(s)}
-                    sx={{ mb: 1 }}
-                  >
-                    {s}
+    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={vi}>
+      <Container maxWidth="md" sx={{ my: 4 }}>
+        <Paper elevation={4} sx={{ p: { xs: 2, sm: 4 }, borderRadius: 3 }}>
+          <Typography variant="h4" component="h1" fontWeight={700} align="center" gutterBottom>Hoàn tất Thông tin Đặt lịch</Typography>
+
+          <Stepper orientation="vertical" activeStep={-1} sx={{ mt: 4 }}>
+            <Step active>
+              <StepLabel icon={<EventAvailable color="primary" />}><Typography variant="h6">1. Thông tin buổi khám</Typography></StepLabel>
+              <StepContent>
+                <Box pl={2} py={1} my={1} bgcolor="grey.50" borderRadius={2}>
+                  <Typography><strong>Bác sĩ:</strong> {bookingIntent.doctorName}</Typography>
+                  <Typography><strong>Thời gian:</strong> {format(new Date(bookingIntent.slotInfo.thoiGianBatDau), 'HH:mm - EEEE, dd/MM/yyyy', { locale: vi })}</Typography>
+                </Box>
+              </StepContent>
+            </Step>
+
+            <Step active>
+              <StepLabel icon={<Person color="primary" />}><Typography variant="h6">2. Thông tin người đến khám</Typography></StepLabel>
+              <StepContent>
+                <Box pl={2} pt={2}>
+                  {(profiles.length > 0) && (
+                    <FormControl fullWidth variant="outlined" sx={{ mb: 2 }}>
+                      <InputLabel>Chọn hồ sơ bệnh nhân</InputLabel>
+                      <Select value={selectedProfileId} label="Chọn hồ sơ bệnh nhân" onChange={handleProfileSelectionChange}>
+                        {profiles.map(p => <MenuItem key={p.maHoSo} value={p.maHoSo}>{p.hoTenBenhNhan} ({p.quanHeVoiNguoiDat})</MenuItem>)}
+                        <MenuItem value="new" sx={{ fontWeight: 'bold', color: 'primary.main' }}>+ Tạo hồ sơ mới cho người thân</MenuItem>
+                      </Select>
+                    </FormControl>
+                  )}
+
+                  {(isCreatingNew || profiles.length === 0) && (
+                    <Box component="div" sx={{ mt: 0.5 }}>
+                      <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+                        {profiles.length === 0 ? "Bạn chưa có hồ sơ nào. Vui lòng tạo hồ sơ đầu tiên:" : "Vui lòng điền thông tin cho hồ sơ mới:"}
+                      </Typography>
+                      <Grid container spacing={2} sx={{ mt: 1 }}>
+                        <Grid item width={350} xs={12}>
+                          <TextField label="Họ và tên bệnh nhân" name="hoTenBenhNhan" fullWidth value={newProfileData.hoTenBenhNhan} onChange={handleNewProfileInputChange} required
+                            error={!!validationErrors.hoTenBenhNhan} helperText={validationErrors.hoTenBenhNhan}
+                          />
+                        </Grid>
+                        <Grid width={260} item xs={12} sm={6}>
+                          <DatePicker
+                            label="Ngày sinh" value={newProfileData.ngaySinh} onChange={handleDateChange}
+                            disableFuture openTo="year" views={['year', 'month', 'day']}
+                            slotProps={{
+                              textField: {
+                                fullWidth: true,
+                                required: true,
+                                error: !!validationErrors.ngaySinh,
+                                helperText: validationErrors.ngaySinh
+                              }
+                            }}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField select label="Giới tính" fullWidth name="gioiTinh" value={newProfileData.gioiTinh} onChange={handleNewProfileInputChange} required error={!!validationErrors.gioiTinh} helperText={validationErrors.gioiTinh}>
+                            <MenuItem value="Nam">Nam</MenuItem>
+                            <MenuItem value="Nữ">Nữ</MenuItem>
+                            <MenuItem value="Khác">Khác</MenuItem>
+                          </TextField>
+                        </Grid>
+                        <Grid item width={250} xs={12} sm={6}>
+                          <TextField label="Số điện thoại liên hệ" name="soDienThoai" type="tel" fullWidth value={newProfileData.soDienThoai} onChange={handleNewProfileInputChange} required error={!!validationErrors.soDienThoai} helperText={validationErrors.soDienThoai} />
+                        </Grid>
+                        <Grid width={250} item xs={12} sm={6}>
+                          <TextField select label="Quan hệ với người đặt" fullWidth name="quanHeVoiNguoiDat" value={newProfileData.quanHeVoiNguoiDat} onChange={handleNewProfileInputChange} required disabled={profiles.length === 0}>
+                            <MenuItem value="Bản thân">Bản thân</MenuItem>
+                            <MenuItem value="Vợ">Vợ</MenuItem>
+                            <MenuItem value="Chồng">Chồng</MenuItem>
+                            <MenuItem value="Con">Con</MenuItem>
+                            <MenuItem value="Bố">Bố</MenuItem>
+                            <MenuItem value="Mẹ">Mẹ</MenuItem>
+                            <MenuItem value="Anh/Chị/Em">Anh/Chị/Em</MenuItem>
+                            <MenuItem value="Khác">Khác</MenuItem>
+                          </TextField>
+                        </Grid>
+                        <Grid width={520} item xs={12}>
+                          <TextField label="Địa chỉ" name="diaChi" fullWidth value={newProfileData.diaChi} onChange={handleNewProfileInputChange} required error={!!validationErrors.diaChi} helperText={validationErrors.diaChi} />
+                        </Grid>
+                      </Grid>
+                    </Box>
+                  )}
+                </Box>
+              </StepContent>
+            </Step>
+
+            <Step active>
+              <StepLabel icon={<EditNote color="primary" />}><Typography variant="h6">3. Lý do khám (không bắt buộc)</Typography></StepLabel>
+              <StepContent>
+                <Box pl={2} pt={2}>
+                  <TextField label="Nhập triệu chứng sơ bộ..." fullWidth multiline rows={3} value={lyDoKham} onChange={(e) => setLyDoKham(e.target.value)} />
+                </Box>
+              </StepContent>
+            </Step>
+
+            <Step active>
+              <StepLabel icon={<Payments color="primary" />}><Typography variant="h6">4. Hoàn tất</Typography></StepLabel>
+              <StepContent>
+                {error && <Alert severity="error" sx={{ my: 2 }}>{error}</Alert>}
+                <Box sx={{ pl: 2, pt: 2 }}>
+                  <Button variant="contained" size="large" onClick={handleProceedToConfirmation} disabled={submitting}>
+                    {submitting ? <CircularProgress size={24} color="inherit" /> : 'Xác nhận và Đặt lịch'}
                   </Button>
-                ))}
-              </Stack>
-              {softLockedSlot && <Typography color="primary" sx={{ mt: 1 }}>Khung giờ {softLockedSlot} đang được giữ cho bạn trong 5 phút.</Typography>}
-            </Grid>
-          </Grid>
-          <Box sx={{ mt: 3 }}>
-            <Button variant="contained" size="large" onClick={handleNext}>Tiếp tục</Button>
-          </Box>
-        </Box>
-      )}
-      {step === 2 && (
-        <Box maxWidth={500} mx="auto">
-          <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>Thông tin cá nhân</Typography>
-          <TextField label="Họ và tên" fullWidth sx={{ mb: 2 }} value={info.name} onChange={e => setInfo({ ...info, name: e.target.value })} />
-          <TextField label="Số điện thoại" fullWidth sx={{ mb: 2 }} value={info.phone} onChange={e => setInfo({ ...info, phone: e.target.value })} />
-          <TextField label="Email" fullWidth sx={{ mb: 2 }} value={info.email} onChange={e => setInfo({ ...info, email: e.target.value })} />
-          <TextField label="Ngày sinh" type="date" fullWidth sx={{ mb: 2 }} InputLabelProps={{ shrink: true }} value={info.dob} onChange={e => setInfo({ ...info, dob: e.target.value })} />
-          <TextField select label="Giới tính" fullWidth sx={{ mb: 2 }} value={info.gender} onChange={e => setInfo({ ...info, gender: e.target.value })}>
-            <MenuItem value="male">Nam</MenuItem>
-            <MenuItem value="female">Nữ</MenuItem>
-            <MenuItem value="other">Khác</MenuItem>
-          </TextField>
-          <TextField label="Lý do khám / Triệu chứng" fullWidth multiline rows={3} sx={{ mb: 2 }} value={info.reason} onChange={e => setInfo({ ...info, reason: e.target.value })} />
-          <Box sx={{ mt: 2 }}>
-            <Button variant="outlined" sx={{ mr: 2 }} onClick={() => setStep(1)}>Quay lại</Button>
-            <Button variant="contained" onClick={handleNext}>Xác nhận & Thanh toán</Button>
-          </Box>
-        </Box>
-      )}
-      {step === 3 && (
-        <Box textAlign="center" sx={{ py: 6 }}>
-          <Typography variant="h5" fontWeight={700} color="success.main" gutterBottom>Đặt lịch thành công!</Typography>
-          <Typography>Thông tin đặt lịch đã được gửi về email của bạn. Vui lòng kiểm tra email để nhận mã QR khi đến khám.</Typography>
-          <Button variant="contained" sx={{ mt: 3 }} href="/">Về trang chủ</Button>
-        </Box>
-      )}
-    </Container>
+                </Box>
+              </StepContent>
+            </Step>
+          </Stepper>
+        </Paper>
+      </Container>
+    </LocalizationProvider>
   );
 };
 

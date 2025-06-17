@@ -1,51 +1,68 @@
-// File: src/context/AuthContext.jsx
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { jwtDecode } from 'jwt-decode'; // Cài đặt thư viện: npm install jwt-decode
+import { useNavigate } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
 
+const TOKEN_KEY = 'accessToken';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    const [authToken, setAuthToken] = useState(localStorage.getItem('accessToken'));
+    const [authToken, setAuthToken] = useState(() => localStorage.getItem(TOKEN_KEY));
     const [user, setUser] = useState(null);
-    const [isLoading, setIsLoading] = useState(true); // Thêm trạng thái loading
+    const [isLoading, setIsLoading] = useState(true);
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const token = localStorage.getItem('accessToken');
+        const token = localStorage.getItem(TOKEN_KEY);
+        console.log(`[AuthContext - Tải lại trang] Đang kiểm tra token trong localStorage...`);
+
         if (token) {
+            console.log(`   -> Đã tìm thấy token.`);
             try {
-                const decodedToken = jwtDecode(token);
-                if (decodedToken.exp * 1000 < Date.now()) {
-                    logout();
+                const decoded = jwtDecode(token);
+                const expiryDate = new Date(decoded.exp * 1000);
+                const isExpired = expiryDate < new Date();
+
+                console.log(`   -> Token sẽ hết hạn lúc: ${expiryDate.toLocaleString()}`);
+                console.log(`   -> Token đã hết hạn? ${isExpired}`);
+
+                if (isExpired) {
+                    console.error("   -> Lỗi: Token đã hết hạn. Đang xóa...");
+                    localStorage.removeItem(TOKEN_KEY);
+                    setAuthToken(null);
+                    setUser(null);
                 } else {
-                    setAuthToken(token);
-                    setUser(decodedToken);
+                    console.log("   -> OK: Token hợp lệ. Đang set user state.");
+                    setUser(decoded);
                 }
-            } catch (error) {
-                logout();
+            } catch (e) {
+                console.error("   -> Lỗi: Token không thể giải mã. Đang xóa...", e);
+                localStorage.removeItem(TOKEN_KEY);
+                setAuthToken(null);
             }
+        } else {
+            console.log("   -> Không tìm thấy token trong localStorage.");
         }
-        setIsLoading(false); // Hoàn tất kiểm tra ban đầu
-    }, []);
+        setIsLoading(false);
+    }, [authToken]);
 
     const login = (token) => {
-        localStorage.setItem('accessToken', token);
-        setAuthToken(token);
+        if (token) {
+            console.log(`%c[AuthContext - LOGIN] Đang lưu token vào localStorage...`, "color: green; font-weight: bold;");
+            localStorage.setItem(TOKEN_KEY, token);
+            setAuthToken(token); // Cập nhật state để trigger useEffect ở trên
+        }
     };
 
     const logout = () => {
-        localStorage.removeItem('accessToken');
+        console.log(`%c[AuthContext - LOGOUT] Đang xóa token...`, "color: red; font-weight: bold;");
+        localStorage.removeItem(TOKEN_KEY);
         setAuthToken(null);
         setUser(null);
-    };
-    const value = {
-        isAuthenticated: !!authToken,
-        user,
-        isLoading, // Truyền isLoading ra ngoài
-        login,
-        logout
+        navigate('/');
     };
 
-    //const isAuthenticated = !!authToken;
+    const value = { isAuthenticated: !!authToken, user, isLoading, login, logout };
+
     return (
         <AuthContext.Provider value={value}>
             {children}
@@ -53,6 +70,4 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
-export const useAuth = () => {
-    return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);

@@ -1,78 +1,106 @@
-// File: src/App.js
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { Box, CircularProgress } from '@mui/material';
 
-// Layout Components
+// --- Import Layout & Common Components ---
 import Navbar from "./components/common/Navbar";
 import Footer from "./components/common/Footer";
-import ProtectedRoute from "./components/common/ProtectedRoute";
 
-// Page Components
+// --- Import Page Components ---
 import HomePage from "./pages/HomePage";
-import DoctorPage from "./pages/DoctorPage";
+import DoctorsPage from "./pages/DoctorsPage";          // TRANG DANH SÁCH BÁC SĨ (KẾT QUẢ TÌM KIẾM)
+import DoctorDetailPage from "./pages/DoctorDetailPage";            // TRANG CHI TIẾT 1 BÁC SĨ (GIỮ NGUYÊN TÊN FILE)
 import BookingPage from "./pages/BookingPage";
 import ConfirmationPage from "./pages/ConfirmationPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import BookingHistory from "./pages/BookingHistory";
 import Review from "./pages/Review";
-
-// Auth Components
+import SearchPage from "./pages/SearchPage";
+// --- Import Auth Components ---
 import AuthPage from "./components/Auth/AuthPage";
 import OAuth2RedirectHandler from "./components/Auth/OAuth2RedirectHandler";
-import "./services/authService";
 
-// Component Layout chính, bao gồm Navbar và Footer
+// Component Layout chính
 const AppLayout = ({ children }) => (
   <>
     <Navbar />
-    <main className="main-content">
+    <main className="main-content" style={{ paddingTop: '64px', minHeight: 'calc(100vh - 64px)' }}>
       {children}
     </main>
     <Footer />
   </>
 );
 
+// Component "Người Gác Cổng"
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}><CircularProgress /></Box>;
+  }
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+  return children;
+};
+
+// Component chứa toàn bộ logic định tuyến
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
-
   return (
     <Routes>
-      {/* ROUTE CÔNG KHAI */}
-      <Route path="/" element={<HomePage />} />
-      <Route path="/doctor/:id" element={<DoctorPage />} />
+      <Route element={<AppLayout><Outlet /></AppLayout>}>
+        {/* =============================== */}
+        {/* CÁC ROUTE CÔNG KHAI */}
+        {/* =============================== */}
+        <Route path="/" element={<HomePage />} />
 
-      {/* ROUTE XÁC THỰC */}
-      <Route
-        path="/auth"
-        element={isAuthenticated ? <Navigate to="/profile" /> : <AuthPage />} // Nếu đã đăng nhập, đá về trang profile
-      />
-      <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
+        {/* THÊM ROUTE CHO TRANG DANH SÁCH BÁC SĨ */}
+        <Route path="/doctors" element={<DoctorsPage />} />
 
-      {/* ROUTE ĐƯỢC BẢO VỆ */}
-      <Route
-        path="/booking/:doctorId"
-        element={<ProtectedRoute><BookingPage /></ProtectedRoute>}
-      />
-      <Route
-        path="/confirmation"
-        element={<ProtectedRoute><ConfirmationPage /></ProtectedRoute>}
-      />
-      <Route
-        path="/profile"
-        element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>}
-      />
-      <Route
-        path="/history"
-        element={<ProtectedRoute><BookingHistory /></ProtectedRoute>}
-      />
-      <Route
-        path="/review/:doctorId"
-        element={<ProtectedRoute><Review /></ProtectedRoute>}
-      />
+        {/* Giữ nguyên route chi tiết của bạn */}
+        <Route path="/doctor/:id" element={<DoctorDetailPage />} />
 
-      {/* Route mặc định: nếu đã đăng nhập thì về profile, nếu chưa thì về trang chủ */}
-      <Route path="*" element={<Navigate to={isAuthenticated ? "/profile" : "/"} />} />
+
+        <Route path="/search" element={<SearchPage />} />
+        {/* =============================== */}
+        {/* ROUTE XÁC THỰC */}
+        {/* =============================== */}
+        <Route
+          path="/auth"
+          element={isAuthenticated ? <Navigate to="/profile" replace /> : <AuthPage />}
+        />
+        <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
+
+        {/* =============================== */}
+        {/* CÁC ROUTE ĐƯỢC BẢO VỆ */}
+        {/* =============================== */}
+        <Route
+          path="/booking/:doctorId"
+          element={<ProtectedRoute><BookingPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/confirmation"
+          element={<ProtectedRoute><ConfirmationPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/profile"
+          element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>}
+        />
+        <Route
+          path="/history"
+          element={<ProtectedRoute><BookingHistory /></ProtectedRoute>}
+        />
+        <Route
+          path="/review/:doctorId"
+          element={<ProtectedRoute><Review /></ProtectedRoute>}
+        />
+
+        {/* Route mặc định */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
     </Routes>
   );
 };
@@ -80,9 +108,7 @@ const AppRoutes = () => {
 const App = () => (
   <Router>
     <AuthProvider>
-      <AppLayout>
-        <AppRoutes />
-      </AppLayout>
+      <AppRoutes />
     </AuthProvider>
   </Router>
 );

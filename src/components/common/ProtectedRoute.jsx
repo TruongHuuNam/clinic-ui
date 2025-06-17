@@ -1,14 +1,13 @@
-// File: src/components/common/ProtectedRoute.jsx
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext'; // Import từ AuthContext
 import { Box, CircularProgress } from '@mui/material';
 
 const ProtectedRoute = ({ children }) => {
-    const { isAuthenticated, isLoading } = useAuth(); // Giả sử context có trạng thái loading
+    // isLoading giúp tránh việc bị đá ra ngoài trong khi token đang được kiểm tra
+    const { isAuthenticated, isLoading } = useAuth();
     const location = useLocation();
 
-    // Nếu đang trong quá trình kiểm tra token từ localStorage, hiển thị loading
     if (isLoading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
@@ -17,13 +16,13 @@ const ProtectedRoute = ({ children }) => {
         );
     }
 
-    // Nếu không được xác thực, chuyển hướng đến trang đăng nhập
     if (!isAuthenticated) {
-        // Lưu lại trang người dùng định đến để sau khi đăng nhập có thể quay lại
+        // Lưu lại trang người dùng đang cố gắng truy cập
+        // để sau khi đăng nhập có thể quay lại đúng trang đó.
         return <Navigate to="/auth" state={{ from: location }} replace />;
     }
 
-    // Nếu đã xác thực, hiển thị component con
+    // Nếu đã đăng nhập, cho phép truy cập
     return children;
 };
 
