@@ -7,16 +7,16 @@ import { Box, CircularProgress } from '@mui/material';
 import Navbar from "./components/common/Navbar";
 import Footer from "./components/common/Footer";
 
-// --- Import Page Components ---
+// --- Import Page Components (ĐÃ ĐƯỢC CẬP NHẬT TÊN) ---
 import HomePage from "./pages/HomePage";
-import DoctorsPage from "./pages/DoctorsPage";          // TRANG DANH SÁCH BÁC SĨ (KẾT QUẢ TÌM KIẾM)
-import DoctorDetailPage from "./pages/DoctorDetailPage";            // TRANG CHI TIẾT 1 BÁC SĨ (GIỮ NGUYÊN TÊN FILE)
+import SearchPage from "./pages/SearchPage"; // Dùng SearchPage thay cho DoctorsPage
+import DoctorDetailPage from "./pages/DoctorDetailPage";
 import BookingPage from "./pages/BookingPage";
-import ConfirmationPage from "./pages/ConfirmationPage";
+import BookingSuccessPage from "./pages/BookingSuccessPage"; // Dùng BookingSuccessPage thay cho ConfirmationPage
+import BookingFailurePage from "./pages/BookingFailurePage"; // Trang cho thanh toán thất bại
 import UserProfilePage from "./pages/UserProfilePage";
 import BookingHistory from "./pages/BookingHistory";
-import Review from "./pages/Review";
-import SearchPage from "./pages/SearchPage";
+
 // --- Import Auth Components ---
 import AuthPage from "./components/Auth/AuthPage";
 import OAuth2RedirectHandler from "./components/Auth/OAuth2RedirectHandler";
@@ -25,14 +25,14 @@ import OAuth2RedirectHandler from "./components/Auth/OAuth2RedirectHandler";
 const AppLayout = ({ children }) => (
   <>
     <Navbar />
-    <main className="main-content" style={{ paddingTop: '64px', minHeight: 'calc(100vh - 64px)' }}>
+    <main style={{ paddingTop: '64px', minHeight: 'calc(100vh - 64px)' }}>
       {children}
     </main>
     <Footer />
   </>
 );
 
-// Component "Người Gác Cổng"
+// Component "Người Gác Cổng" cho các trang cần đăng nhập
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
@@ -56,15 +56,9 @@ const AppRoutes = () => {
         {/* CÁC ROUTE CÔNG KHAI */}
         {/* =============================== */}
         <Route path="/" element={<HomePage />} />
-
-        {/* THÊM ROUTE CHO TRANG DANH SÁCH BÁC SĨ */}
-        <Route path="/doctors" element={<DoctorsPage />} />
-
-        {/* Giữ nguyên route chi tiết của bạn */}
+        <Route path="/search" element={<SearchPage />} />
         <Route path="/doctor/:id" element={<DoctorDetailPage />} />
 
-
-        <Route path="/search" element={<SearchPage />} />
         {/* =============================== */}
         {/* ROUTE XÁC THỰC */}
         {/* =============================== */}
@@ -82,8 +76,12 @@ const AppRoutes = () => {
           element={<ProtectedRoute><BookingPage /></ProtectedRoute>}
         />
         <Route
-          path="/confirmation"
-          element={<ProtectedRoute><ConfirmationPage /></ProtectedRoute>}
+          path="/booking-success"
+          element={<ProtectedRoute><BookingSuccessPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/booking-failure"
+          element={<ProtectedRoute><BookingFailurePage /></ProtectedRoute>}
         />
         <Route
           path="/profile"
@@ -92,10 +90,6 @@ const AppRoutes = () => {
         <Route
           path="/history"
           element={<ProtectedRoute><BookingHistory /></ProtectedRoute>}
-        />
-        <Route
-          path="/review/:doctorId"
-          element={<ProtectedRoute><Review /></ProtectedRoute>}
         />
 
         {/* Route mặc định */}

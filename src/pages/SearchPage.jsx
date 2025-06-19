@@ -2,37 +2,58 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Container, Grid, Paper, Typography, Box, Checkbox, FormControlLabel, FormGroup,
-    RadioGroup, Radio, Slider, Button, Divider, CircularProgress, Alert, Avatar, Chip
+    RadioGroup, Radio, Slider, Button, Divider, CircularProgress, Alert, Avatar, Link
 } from '@mui/material';
-import { Star, WorkOutline, MedicalServices } from '@mui/icons-material';
+import { MedicalServices, AttachMoney, CalendarToday } from '@mui/icons-material';
 import { format, parseISO } from 'date-fns';
+import { vi } from 'date-fns/locale';
 
-// SỬA LẠI: Import cả hai service
-import doctorService from '../services/doctorService';
+// Import các service cần thiết
 import specialtyService from '../services/specialtyService';
+import searchService from '../services/searchService';
 
-// === CÁC COMPONENT CON (KHÔNG THAY ĐỔI) ===
+
+// === COMPONENT CON: CARD KẾT QUẢ TÌM KIẾM BÁC SĨ ===
 const DoctorResultCard = ({ doctor }) => {
     const navigate = useNavigate();
     return (
-        <Paper variant="outlined" sx={{ p: 2, mb: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, cursor: 'pointer', '&:hover': { boxShadow: 3 } }} onClick={() => navigate(`/doctor/${doctor.maBacSi}`)}>
-            <Avatar src={doctor.hinhAnhUrl} sx={{ width: 100, height: 100, alignSelf: 'center' }} />
-            <Box flex={1}>
-                <Typography variant="h6" fontWeight={600} color="primary.main">{doctor.hoTen}</Typography>
-                <Typography variant="body1">{doctor.chuyenKhoa}</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ my: 1 }}>{doctor.phongKham}</Typography>
-            </Box>
+        <Paper variant="outlined" sx={{ p: 2.5, mb: 2, borderRadius: 2, '&:hover': { boxShadow: 3 } }}>
+            <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} sm={3} md={2} sx={{ textAlign: 'center' }}>
+                    <Avatar src={doctor.hinhAnhUrl} sx={{ width: 100, height: 100, mx: 'auto' }} />
+                </Grid>
+                <Grid item xs={12} sm={9} md={7}>
+                    <Link component="button" variant="h6" fontWeight={600} onClick={() => navigate(`/doctor/${doctor.maBacSi}`)} sx={{ textAlign: 'left', textDecoration: 'none', color: 'text.primary' }}>
+                        {doctor.hocVi || ''} {doctor.hoTen}
+                    </Link>
+                    <Typography variant="body1" color="primary.main" fontWeight={500}>{doctor.chuyenKhoa}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ my: 0.5 }}>{doctor.phongKham}</Typography>
+                    <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <AttachMoney fontSize="small" /> Giá khám: <strong>{doctor.giaKham ? `${doctor.giaKham.toLocaleString()} đ` : 'Liên hệ'}</strong>
+                    </Typography>
+                </Grid>
+                <Grid item xs={12} md={3} sx={{ textAlign: { xs: 'center', md: 'right' } }}>
+                    <Button variant="contained" size="large" onClick={() => navigate(`/doctor/${doctor.maBacSi}`)}>
+                        Xem lịch
+                    </Button>
+                </Grid>
+            </Grid>
         </Paper>
     );
 };
 
+// === COMPONENT CON: CARD KẾT QUẢ TÌM KIẾM CHUYÊN KHOA ===
 const SpecialtyResultCard = ({ specialty }) => {
     const navigate = useNavigate();
     const handleSelectSpecialty = () => {
-        navigate(`/search?type=doctor&specialtyId=${specialty.id}&specialtyName=${specialty.tenChuyenKhoa}`);
+        const params = new URLSearchParams();
+        params.append('type', 'doctor');
+        params.append('specialtyId', specialty.id);
+        params.append('specialtyName', specialty.tenChuyenKhoa);
+        navigate(`/search?${params.toString()}`);
     };
     return (
-        <Paper variant="outlined" sx={{ p: 2, mb: 2, display: 'flex', gap: 2, cursor: 'pointer', '&:hover': { boxShadow: 3, borderColor: 'primary.main' } }} onClick={handleSelectSpecialty}>
+        <Paper variant="outlined" sx={{ p: 2, mb: 2, display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', '&:hover': { boxShadow: 3, borderColor: 'primary.main' } }} onClick={handleSelectSpecialty}>
             <Avatar sx={{ bgcolor: 'primary.light', width: 60, height: 60 }}><MedicalServices /></Avatar>
             <Box>
                 <Typography variant="h6" fontWeight={600}>{specialty.tenChuyenKhoa}</Typography>
@@ -42,170 +63,150 @@ const SpecialtyResultCard = ({ specialty }) => {
     );
 };
 
-const FilterSidebar = ({ filters, onFilterChange, onPriceChange }) => (
-    <Paper sx={{ p: 2, position: 'sticky', top: '80px', borderRadius: 3 }}>
-        <Typography variant="h6" fontWeight={600} gutterBottom>Bộ lọc</Typography>
-        <Divider sx={{ my: 2 }} />
-        <Typography fontWeight="bold" gutterBottom>Còn trống</Typography>
-        <RadioGroup name="availability" value={filters.availability} onChange={onFilterChange}>
-            <FormControlLabel value="any" control={<Radio size="small" />} label="Bất kỳ ngày nào" />
-            <FormControlLabel value="today" control={<Radio size="small" />} label="Hôm nay" />
-            <FormControlLabel value="tomorrow" control={<Radio size="small" />} label="Ngày mai" />
-            <FormControlLabel value="next7days" control={<Radio size="small" />} label="7 ngày tới" />
-            <FormControlLabel value="weekend" control={<Radio size="small" />} label="Cuối tuần" />
-        </RadioGroup>
-        <Divider sx={{ my: 2 }} />
-        <Typography fontWeight="bold" gutterBottom>Giờ đặc biệt</Typography>
-        <FormGroup>
-            <FormControlLabel control={<Checkbox name="timeOfDay" value="early_morning" checked={filters.timeOfDay.includes('early_morning')} onChange={onFilterChange} />} label="Đầu giờ (Trước 9:00)" />
-            <FormControlLabel control={<Checkbox name="timeOfDay" value="after_hours" checked={filters.timeOfDay.includes('after_hours')} onChange={onFilterChange} />} label="Ngoài giờ (Sau 17:00)" />
-        </FormGroup>
-        <Divider sx={{ my: 2 }} />
-        <Typography fontWeight="bold" gutterBottom>Giá khám (VNĐ)</Typography>
-        <Slider value={filters.priceRange} onChangeCommitted={onPriceChange} valueLabelDisplay="auto" min={0} max={1500000} step={50000} sx={{ mx: 1, width: '95%' }} valueLabelFormat={(value) => `${(value / 1000)}k`} />
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}><Typography variant='caption'>0đ</Typography><Typography variant='caption'>1,500,000đ</Typography></Box>
-    </Paper>
-);
+// === COMPONENT CON: BỘ LỌC ===
+const FilterSidebar = ({ filters, onFilterChange }) => {
+    return (
+        <Paper sx={{ p: 2, position: 'sticky', top: '80px', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            <Typography variant="h6" fontWeight={600} gutterBottom>Bộ lọc</Typography>
+            <Divider sx={{ my: 2 }} />
 
-// === COMPONENT CHÍNH ===
+            <Typography fontWeight="bold" gutterBottom>Còn trống</Typography>
+            <RadioGroup name="availability" value={filters.availability} onChange={(e) => onFilterChange('availability', e.target.value)}>
+                <FormControlLabel value="any" control={<Radio size="small" />} label="Bất kỳ ngày nào" />
+                <FormControlLabel value="today" control={<Radio size="small" />} label="Hôm nay" />
+                <FormControlLabel value="tomorrow" control={<Radio size="small" />} label="Ngày mai" />
+                <FormControlLabel value="next7days" control={<Radio size="small" />} label="7 ngày tới" />
+                <FormControlLabel value="weekend" control={<Radio size="small" />} label="Cuối tuần" />
+            </RadioGroup>
+            <Divider sx={{ my: 2 }} />
+
+            <Typography fontWeight="bold" gutterBottom>Giờ đặc biệt</Typography>
+            <FormGroup>
+                <FormControlLabel control={<Checkbox checked={filters.timeOfDay.includes('early_morning')} onChange={(e) => onFilterChange('timeOfDay', e.target.value, true)} />} name="timeOfDay" value="early_morning" label="Đầu giờ (Trước 9:00)" />
+                <FormControlLabel control={<Checkbox checked={filters.timeOfDay.includes('after_hours')} onChange={(e) => onFilterChange('timeOfDay', e.target.value, true)} />} name="timeOfDay" value="after_hours" label="Ngoài giờ (Sau 17:00)" />
+            </FormGroup>
+            <Divider sx={{ my: 2 }} />
+
+            {/* THÊM MỚI: Bộ lọc giới tính bác sĩ */}
+            <Typography fontWeight="bold" gutterBottom>Giới tính bác sĩ</Typography>
+            <RadioGroup row name="doctorGender" value={filters.doctorGender} onChange={(e) => onFilterChange('doctorGender', e.target.value)}>
+                <FormControlLabel value="any" control={<Radio size="small" />} label="Tất cả" />
+                <FormControlLabel value="Nam" control={<Radio size="small" />} label="Nam" />
+                <FormControlLabel value="Nữ" control={<Radio size="small" />} label="Nữ" />
+            </RadioGroup>
+            <Divider sx={{ my: 2 }} />
+            <Typography fontWeight="bold" gutterBottom>Giá khám</Typography>
+            <Slider value={filters.priceRange} onChange={(e, newValue) => onFilterChange('priceRange', newValue)} valueLabelDisplay="auto" min={0} max={1500000} step={50000} sx={{ mx: 1, width: '95%' }} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant='caption'>{filters.priceRange[0].toLocaleString()}đ</Typography>
+                <Typography variant='caption'>{filters.priceRange[1].toLocaleString()}đ</Typography>
+            </Box>
+
+        </Paper>
+    );
+}
+
+// === COMPONENT CHÍNH CỦA TRANG ===
 const SearchPage = () => {
     const [searchParams] = useSearchParams();
-    const navigate = useNavigate();
-    const searchType = searchParams.get('type') || 'doctor';
 
-    // State cho bộ lọc
+    const initialValues = useMemo(() => ({
+        type: searchParams.get('type') || 'doctor',
+        q: searchParams.get('q') || '',
+        specialtyId: searchParams.get('specialtyId') || '',
+        specialtyName: searchParams.get('specialtyName') || ''
+    }), [searchParams]);
+
+    // THÊM MỚI: Thêm `doctorGender` vào state của bộ lọc
     const [filters, setFilters] = useState({
         availability: 'any',
         timeOfDay: [],
-        doctorGender: 'any',
-        priceRange: [0, 1500000]
+        priceRange: [0, 1500000],
+        doctorGender: 'any'
     });
 
-    // State cho kết quả và UI
-    const [doctorResults, setDoctorResults] = useState([]);
-    const [allSpecialties, setAllSpecialties] = useState([]); // State mới để lưu tất cả chuyên khoa
+    const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [title, setTitle] = useState('Kết quả tìm kiếm');
+    const [title, setTitle] = useState('Đang tải kết quả...');
 
-    const handleFilterChange = (event) => {
-        const { name, value, type, checked } = event.target;
+    const handleFilterChange = useCallback((name, value, isCheckbox = false) => {
         setFilters(prev => {
             const newFilters = { ...prev };
-            if (type === 'checkbox') {
-                const currentValues = newFilters[name] || [];
-                newFilters[name] = checked ? [...currentValues, value] : currentValues.filter(v => v !== value);
+            if (isCheckbox) {
+                const currentValues = prev[name] || [];
+                const isChecked = !currentValues.includes(value);
+                newFilters[name] = isChecked ? [...currentValues, value] : currentValues.filter(v => v !== value);
             } else {
                 newFilters[name] = value;
             }
             return newFilters;
         });
-    };
+    }, []);
 
-    const handlePriceChange = (event, newValue) => {
-        setFilters(prev => ({ ...prev, priceRange: newValue }));
-    };
-
-    // SỬA LẠI: Tách logic gọi API ra
-    const fetchDoctors = useCallback(() => {
-        setLoading(true);
-        setError('');
-        const specialtyName = searchParams.get('specialtyName');
-        const q = searchParams.get('q');
-        setTitle(specialtyName ? `Bác sĩ chuyên khoa ${specialtyName}` : `Kết quả tìm kiếm cho "${q || 'Tất cả'}"`);
-
-        const params = {
-            q: q || '',
-            specialtyId: searchParams.get('specialtyId') || '',
-            ...filters,
-            minPrice: filters.priceRange[0],
-            maxPrice: filters.priceRange[1],
-        };
-        // Đây là nơi bạn gọi API backend thật
-        doctorService.getAllDoctors(params) // Giả định hàm tìm kiếm bác sĩ của bạn
-            .then(res => setDoctorResults(res.data || []))
-            .catch(() => setError("Lỗi khi tìm bác sĩ."))
-            .finally(() => setLoading(false));
-    }, [searchParams, filters]);
-
-    const fetchAllSpecialties = useCallback(() => {
-        setLoading(true);
-        setError('');
-        const q = searchParams.get('q') || '';
-        setTitle(`Kết quả tìm kiếm chuyên khoa cho "${q}"`);
-        specialtyService.getAllSpecialties() // Sử dụng hàm có sẵn của bạn
-            .then(res => setAllSpecialties(res.data || []))
-            .catch(() => setError("Lỗi khi tải danh sách chuyên khoa."))
-            .finally(() => setLoading(false));
-    }, [searchParams]);
-
-    // SỬA LẠI: useEffect chính để quyết định hàm nào sẽ được gọi
     useEffect(() => {
-        const handler = setTimeout(() => {
-            if (searchType === 'doctor') {
-                fetchDoctors();
-            } else { // searchType === 'specialty'
-                fetchAllSpecialties();
+        const performSearch = () => {
+            setLoading(true);
+            setError('');
+
+            if (initialValues.type === 'doctor') {
+                setTitle(initialValues.specialtyName ? `Bác sĩ chuyên khoa ${initialValues.specialtyName}` : `Kết quả tìm kiếm cho "${initialValues.q || 'Tất cả'}"`);
+
+                // Params gửi đi giờ đã bao gồm cả doctorGender
+                const params = { q: initialValues.q, specialtyId: initialValues.specialtyId, ...filters, minPrice: filters.priceRange[0], maxPrice: filters.priceRange[1] };
+
+                searchService.searchDoctors(params)
+                    .then(res => setResults(res.data || []))
+                    .catch(() => setError("Lỗi khi tìm kiếm bác sĩ. Vui lòng thử lại."))
+                    .finally(() => setLoading(false));
+
+            } else { // type === 'specialty'
+                setTitle(`Kết quả tìm kiếm chuyên khoa cho "${initialValues.q}"`);
+                specialtyService.getAllSpecialties()
+                    .then(res => {
+                        const allData = res.data || [];
+                        if (!initialValues.q) {
+                            setResults(allData);
+                        } else {
+                            const filteredList = allData.filter(s => s.tenChuyenKhoa.toLowerCase().includes(initialValues.q.toLowerCase()));
+                            setResults(filteredList);
+                        }
+                    })
+                    .catch(() => setError("Lỗi khi tải danh sách chuyên khoa."))
+                    .finally(() => setLoading(false));
             }
-        }, 300); // Debounce
+        };
+
+        const handler = setTimeout(performSearch, 500);
         return () => clearTimeout(handler);
-    }, [filters, searchType, fetchDoctors, fetchAllSpecialties]);
 
-    // SỬA LẠI: Logic lọc chuyên khoa ở frontend theo yêu cầu của bạn
-    const displayedSpecialties = useMemo(() => {
-        const searchTerm = searchParams.get('q')?.toLowerCase() || '';
-        // Quy tắc 1: Nếu không nhập gì, hiển thị tất cả
-        if (!searchTerm) return allSpecialties;
-
-        // Quy tắc 2: Lọc các chuyên khoa có tên chứa từ khóa
-        const filteredList = allSpecialties.filter(s =>
-            s.tenChuyenKhoa.toLowerCase().includes(searchTerm)
-        );
-
-        // Quy tắc 3: Nếu lọc không ra kết quả, vẫn hiển thị tất cả
-        return filteredList.length > 0 ? filteredList : allSpecialties;
-    }, [searchParams, allSpecialties]);
-
-
-    const renderResults = () => {
-        if (loading) {
-            return <Box sx={{ textAlign: 'center', mt: 5 }}><CircularProgress /></Box>;
-        }
-        if (error) {
-            return <Alert severity="error">{error}</Alert>;
-        }
-        // Hiển thị kết quả Bác sĩ
-        if (searchType === 'doctor') {
-            if (doctorResults.length > 0) {
-                return doctorResults.map(doctor => <DoctorResultCard key={doctor.maBacSi} doctor={doctor} />);
-            }
-            return <Alert severity="info">Không tìm thấy bác sĩ phù hợp với bộ lọc của bạn.</Alert>;
-        }
-        // Hiển thị kết quả Chuyên khoa
-        if (searchType === 'specialty') {
-            if (displayedSpecialties.length > 0) {
-                return displayedSpecialties.map(specialty => <SpecialtyResultCard key={specialty.id} specialty={specialty} />);
-            }
-            return <Alert severity="info">Không có dữ liệu chuyên khoa để hiển thị.</Alert>;
-        }
-        return null;
-    };
-
+    }, [filters, initialValues]);
 
     return (
         <Container maxWidth="xl" sx={{ my: 4 }}>
             <Grid container spacing={4}>
-                {/* Cột Bộ lọc: Chỉ hiển thị khi tìm bác sĩ */}
-                {searchType === 'doctor' && (
+                {initialValues.type === 'doctor' && (
                     <Grid item xs={12} md={4}>
-                        <FilterSidebar filters={filters} onFilterChange={handleFilterChange} onPriceChange={handlePriceChange} />
+                        <FilterSidebar filters={filters} onFilterChange={handleFilterChange} />
                     </Grid>
                 )}
 
-                {/* Cột Kết quả: Thay đổi grid tùy theo có bộ lọc hay không */}
-                <Grid item xs={12} md={searchType === 'doctor' ? 8 : 12}>
-                    <Typography variant="h5" fontWeight={700} gutterBottom>{title}</Typography>
-                    {renderResults()}
+                <Grid item xs={12} md={initialValues.type === 'doctor' ? 8 : 12}>
+                    <Typography variant="h5" fontWeight={700} gutterBottom>
+                        {loading ? 'Đang tìm kiếm...' : `Tìm thấy ${results.length} kết quả`}
+                    </Typography>
+
+                    {loading ? (
+                        <Box sx={{ textAlign: 'center', mt: 5 }}><CircularProgress /></Box>
+                    ) : error ? (
+                        <Alert severity="error">{error}</Alert>
+                    ) : results.length > 0 ? (
+                        initialValues.type === 'doctor'
+                            ? results.map(doctor => <DoctorResultCard key={doctor.maBacSi} doctor={doctor} />)
+                            : results.map(specialty => <SpecialtyResultCard key={specialty.id} specialty={specialty} />)
+                    ) : (
+                        <Alert severity="info">Không tìm thấy kết quả nào phù hợp.</Alert>
+                    )}
                 </Grid>
             </Grid>
         </Container>

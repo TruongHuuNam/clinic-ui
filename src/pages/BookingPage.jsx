@@ -124,13 +124,9 @@ const BookingPage = () => {
   };
 
   const handleProceedToConfirmation = async () => {
-    setError(''); // Xóa lỗi chung cũ
-    // SỬA: Chỉ kiểm tra lỗi khi tạo hồ sơ mới
+    setError('');
     if (isCreatingNew) {
-      const isFormValid = validateNewProfile();
-      if (!isFormValid) {
-        return; // Dừng lại nếu form không hợp lệ
-      }
+      if (!validateNewProfile()) return;
     }
 
     setSubmitting(true);
@@ -138,10 +134,7 @@ const BookingPage = () => {
       let finalProfileId = selectedProfileId;
 
       if (isCreatingNew) {
-        const profilePayload = {
-          ...newProfileData,
-          ngaySinh: format(newProfileData.ngaySinh, 'yyyy-MM-dd')
-        };
+        const profilePayload = { ...newProfileData, ngaySinh: format(newProfileData.ngaySinh, 'yyyy-MM-dd') };
         const newProfileResponse = await profileService.createProfile(profilePayload);
         finalProfileId = newProfileResponse.data.maHoSo;
       }
@@ -150,20 +143,27 @@ const BookingPage = () => {
         throw new Error("Vui lòng chọn hoặc tạo một hồ sơ bệnh nhân.");
       }
 
-      const bookingData = {
+      const bookingPayload = {
         maSlot: bookingIntent.slotInfo.maSlot,
         maHoSoBenhNhan: finalProfileId,
         lyDoKham: lyDoKham,
       };
 
-      const response = await bookingService.createProvisionalBooking(bookingData);
-      sessionStorage.removeItem('bookingIntent');
-      navigate('/confirmation', { state: { summary: response.data } });
+      // SỬA LẠI: Gọi đúng service và hàm đã thống nhất
+      const response = await bookingService.createBookingAndInitiatePayment(bookingPayload);
+      const paymentUrl = response.data.paymentUrl;
+
+      if (paymentUrl) {
+        sessionStorage.removeItem('bookingIntent');
+        window.location.href = paymentUrl;
+      } else {
+        throw new Error("Không nhận được URL thanh toán từ máy chủ.");
+      }
 
     } catch (err) {
       console.error("Lỗi khi xác nhận đặt lịch:", err);
-      setError(err.response?.data?.message || err.message || "Đặt lịch thất bại, vui lòng thử lại.");
-    } finally {
+      const errorMsg = err.response?.data?.message || err.message || "Đặt lịch thất bại, vui lòng thử lại.";
+      setError(errorMsg);
       setSubmitting(false);
     }
   };

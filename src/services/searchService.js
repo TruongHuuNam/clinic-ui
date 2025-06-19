@@ -1,21 +1,24 @@
 // src/services/searchService.js
-
 import api from './api';
 
-// Hàm tìm kiếm bác sĩ đa năng (đã có, không đổi)
-const searchDoctors = (params) => {
-    // ... logic chuyển đổi params nếu cần ...
-    return api.get('/search/doctors', { params });
-};
+const searchDoctors = (filters) => {
+    // Tạo một đối tượng params sạch, chỉ chứa các giá trị hợp lệ
+    const cleanFilters = {};
+    for (const key in filters) {
+        const value = filters[key];
+        // Chỉ thêm vào params nếu giá trị có thật (không null, undefined, rỗng)
+        if (value !== null && value !== undefined && value !== '') {
+            cleanFilters[key] = value;
+        }
+    }
 
-// HÀM MỚI: Tìm kiếm chuyên khoa
-const searchSpecialties = (params) => {
-    return api.get('/search/specialties', { params });
+    // Axios sẽ tự động xử lý việc chuyển đổi object thành query string đúng chuẩn
+    // mà Spring Boot có thể hiểu được (ví dụ: lặp lại key cho mảng)
+    return api.get('/search/doctors', { params: cleanFilters });
 };
 
 const searchService = {
     searchDoctors,
-    searchSpecialties, // Thêm hàm mới vào export
 };
 
 export default searchService;
